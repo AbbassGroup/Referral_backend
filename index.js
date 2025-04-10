@@ -13,11 +13,17 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3001', 'https://abbass.group'],
+  origin: [
+    'https://abbass.group',
+    'https://portal-pgmg.onrender.com',
+    'http://localhost:3001'
+  ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+app.options('*', cors());
 
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
