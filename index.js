@@ -157,25 +157,36 @@ app.get('/api/admin/dashboard', async (req, res) => {
     const newReferrals = await Referral.countDocuments({ 
       status: { $regex: new RegExp('^New lead$', 'i') }
     });
-    console.log('New lead count:', newReferrals);
     
     const contactedReferrals = await Referral.countDocuments({ 
       status: { $regex: new RegExp('^Client engaged$', 'i') }
     });
+    
     const pendingReferrals = await Referral.countDocuments({ 
       status: { $regex: new RegExp('^Settled$', 'i') }
     });
+    
     const convertedReferrals = await Referral.countDocuments({ 
       status: { $regex: new RegExp('^Revenue$', 'i') }
     });
     
-    // Get recent referrals with status
+    // Get recent referrals with status and populate partner data
     const recentReferrals = await Referral.find()
+      .populate('assignedPartner', 'firstname lastname company')
       .sort({ date: -1 })
       .limit(6)
-      .select('firstName surname status date');
+      .select('firstName surname status date assignedPartner');
     
-    console.log('Recent referrals with status:', recentReferrals);
+    console.log('Dashboard data being sent:', {
+      totalPartners,
+      referralStats: {
+        new: newReferrals,
+        contacted: contactedReferrals,
+        pending: pendingReferrals,
+        converted: convertedReferrals
+      },
+      recentReferrals
+    });
 
     res.json({
       success: true,
@@ -190,7 +201,11 @@ app.get('/api/admin/dashboard', async (req, res) => {
     });
   } catch (error) {
     console.error('Dashboard data error:', error);
-    res.status(500).json({ success: false, message: 'Error fetching dashboard data' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error fetching dashboard data',
+      error: error.message 
+    });
   }
 });
 
