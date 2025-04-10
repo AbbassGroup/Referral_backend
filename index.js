@@ -77,7 +77,7 @@ const adminSchema = new mongoose.Schema({
 const Admin = mongoose.model('admin_details', adminSchema);
 
 // (Optional) Get Admin route for debugging
-app.get('/getAdmin', async (req, res) => {
+app.get('/api/getAdmin', async (req, res) => {
   try {
     const admins = await Admin.find({}, { 'name ': 1, _id: 0 });
     console.log('Found admins:', admins);
