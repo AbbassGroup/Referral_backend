@@ -16,10 +16,11 @@ app.use(cors({
   origin: [
     'https://abbass.group',
     'https://portal-pgmg.onrender.com',
-    'http://localhost:3001'
+    'http://localhost:3001',
+    'http://localhost:3000'
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
