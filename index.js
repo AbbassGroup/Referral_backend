@@ -27,6 +27,16 @@ app.use(cors({
 app.use(express.json());
 app.options('*', cors());
 
+// Add logging middleware at the top after CORS
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`, {
+    body: req.body,
+    query: req.query,
+    params: req.params
+  });
+  next();
+});
+
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -263,22 +273,19 @@ app.get('/api/referrals', async (req, res) => {
       })
       .sort({ date: -1 });
     
-    // Debug logging
-    console.log('Raw referrals with populated data:', JSON.stringify(referrals, null, 2));
-    console.log('Fetched referrals with populated partner data:', 
-      referrals.map(ref => ({
-        id: ref._id,
-        name: `${ref.firstName} ${ref.surname}`,
-        partnerInfo: ref.assignedPartner ? 
-          `${ref.assignedPartner.firstname} ${ref.assignedPartner.lastname}` : 
-          'No partner info'
-      }))
-    );
+    if (!referrals) {
+      console.log('No referrals found');
+      return res.json([]);
+    }
     
+    console.log(`Found ${referrals.length} referrals`);
     res.json(referrals);
   } catch (error) {
     console.error('Error fetching referrals:', error);
-    res.status(500).json({ message: 'Error fetching referrals' });
+    res.status(500).json({ 
+      message: 'Error fetching referrals',
+      error: error.message 
+    });
   }
 });
 
@@ -335,6 +342,8 @@ app.patch('/api/referrals/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    console.log(`Updating referral ${id} status to ${status}`);
+
     const updatedReferral = await Referral.findByIdAndUpdate(
       id,
       { status },
@@ -345,13 +354,18 @@ app.patch('/api/referrals/:id/status', async (req, res) => {
     });
 
     if (!updatedReferral) {
+      console.log(`Referral ${id} not found`);
       return res.status(404).json({ message: 'Referral not found' });
     }
 
+    console.log('Updated referral:', updatedReferral);
     res.json(updatedReferral);
   } catch (error) {
     console.error('Error updating referral status:', error);
-    res.status(500).json({ message: 'Error updating referral status' });
+    res.status(500).json({ 
+      message: 'Error updating referral status',
+      error: error.message 
+    });
   }
 });
 
