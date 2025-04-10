@@ -374,20 +374,43 @@ app.get('/api/partner/referrals', authenticateToken, async (req, res) => {
   try {
     const partnerId = req.query.partnerId;
     console.log('Fetching referrals for partnerId:', partnerId);
+    
     if (!partnerId) {
-      return res.status(400).json({ message: 'partnerId is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'partnerId is required' 
+      });
     }
+
+    // Verify partner exists
+    const partner = await Partner.findById(partnerId);
+    if (!partner) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Partner not found' 
+      });
+    }
+
     const referrals = await Referral.find({ assignedPartner: partnerId })
       .populate({
         path: 'assignedPartner',
         select: 'firstname lastname company email'
       })
       .sort({ date: -1 });
-    console.log('Found referrals:', referrals);
-    res.json(referrals);
+
+    console.log(`Found ${referrals.length} referrals for partner ${partnerId}`);
+    
+    res.json({
+      success: true,
+      data: referrals
+    });
   } catch (error) {
     console.error('Error fetching partner referrals:', error);
-    res.status(500).json({ message: 'Error fetching referrals' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching referrals',
+      error: error.message 
+    });
   }
 });
 
@@ -395,21 +418,36 @@ app.get('/api/partner/referrals', authenticateToken, async (req, res) => {
 app.get('/api/partner/validate', authenticateToken, async (req, res) => {
   try {
     const partnerId = req.query.partnerId;
+    console.log('Validating partner session:', partnerId);
+
     if (!partnerId) {
-      return res.status(400).json({ message: 'Partner ID is required' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Partner ID is required' 
+      });
     }
+
     const partner = await Partner.findById(partnerId);
     if (!partner) {
-      return res.status(404).json({ message: 'Partner not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Partner not found' 
+      });
     }
+
     res.json({ 
+      success: true,
       partnerId: partner._id,
       email: partner.email,
       name: partner.username
     });
   } catch (error) {
     console.error('Partner validation error:', error);
-    res.status(500).json({ message: 'Error validating partner session' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Error validating partner session',
+      error: error.message 
+    });
   }
 });
 
