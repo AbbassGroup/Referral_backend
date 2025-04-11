@@ -55,6 +55,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add a direct login route
+app.post('/login', async (req, res) => {
+  console.log('Direct login route hit');
+  // Forward to the /api/login route
+  return app._router.handle(req, res, () => {
+    req.url = '/api/login';
+    app._router.handle(req, res);
+  });
+});
+
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -587,6 +597,16 @@ app.delete('/api/settled-referrals/:id', async (req, res) => {
     console.error('Error deleting settled referral:', error);
     res.status(500).json({ message: 'Error deleting settled referral' });
   }
+});
+
+// Add this at the end of your file, before app.listen
+app.use((req, res) => {
+  console.log(`Method Not Allowed: ${req.method} ${req.url}`);
+  res.status(405).json({
+    success: false,
+    message: `Method ${req.method} not allowed for ${req.url}`,
+    allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+  });
 });
 
 const PORT =  process.env.PORT || 5001;
