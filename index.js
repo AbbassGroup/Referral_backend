@@ -65,6 +65,62 @@ app.post('/login', async (req, res) => {
   });
 });
 
+// Define your login logic as a separate function
+const handleLogin = async (req, res) => {
+  try {
+    const { name, password } = req.body;
+    console.log('Login attempt for:', name);
+
+    // 1. Check Admin first (only one admin exists)
+    const admin = await Admin.findOne({ 'name ': name });
+    if (admin) {
+      // Compare plaintext password (admin password stored as plaintext)
+      if (admin.password === password) {
+        return res.json({
+          success: true,
+          role: 'admin',
+          token: 'dummy-admin-token',
+          user: { name: admin['name '].trim() }
+        });
+      } else {
+        return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      }
+    }
+
+    // 2. Check Partner (password is hashed)
+    const partner = await Partner.findOne({ username: name }).select('+password');
+    if (!partner) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    const isMatch = await bcryptjs.compare(password, partner.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    return res.json({
+      success: true,
+      role: 'partner',
+      token: 'dummy-partner-token',
+      user: {
+        _id: partner._id,
+        firstname: partner.firstname,
+        lastname: partner.lastname,
+        username: partner.username,
+        email: partner.email,
+        company: partner.company
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// Replace your app.post('/login') with this:
+app.post('/login', handleLogin);
+
+// Keep your existing app.post('/api/login') as-is
+app.post('/api/login', handleLogin);
+
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -130,56 +186,6 @@ app.get('/api/getAdmin', async (req, res) => {
 // Test endpoint for server connectivity
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Server is running' });
-});
-
-// Unified Login Route – Automatically detects admin vs. partner
-app.post('/api/login', async (req, res) => {
-  try {
-    const { name, password } = req.body;
-    console.log('Login attempt for:', name);
-
-    // 1. Check Admin first (only one admin exists)
-    const admin = await Admin.findOne({ 'name ': name });
-    if (admin) {
-      // Compare plaintext password (admin password stored as plaintext)
-      if (admin.password === password) {
-        return res.json({
-          success: true,
-          role: 'admin',
-          token: 'dummy-admin-token',
-          user: { name: admin['name '].trim() }
-        });
-      } else {
-        return res.status(401).json({ success: false, message: 'Invalid credentials' });
-      }
-    }
-
-    // 2. Check Partner (password is hashed)
-    const partner = await Partner.findOne({ username: name }).select('+password');
-    if (!partner) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-    const isMatch = await bcryptjs.compare(password, partner.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-    return res.json({
-      success: true,
-      role: 'partner',
-      token: 'dummy-partner-token',
-      user: {
-        _id: partner._id,
-        firstname: partner.firstname,
-        lastname: partner.lastname,
-        username: partner.username,
-        email: partner.email,
-        company: partner.company
-      }
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
 });
 
 // Admin Dashboard Data Route
