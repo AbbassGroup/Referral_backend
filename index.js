@@ -606,14 +606,14 @@ app.delete('/api/settled-referrals/:id', async (req, res) => {
 });
 
 // Add this at the end of your file, before app.listen
-app.use((req, res) => {
-  console.log(`Method Not Allowed: ${req.method} ${req.url}`);
-  res.status(405).json({
-    success: false,
-    message: `Method ${req.method} not allowed for ${req.url}`,
-    allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
-  });
-});
+// app.use((req, res) => {
+//   console.log(`Method Not Allowed: ${req.method} ${req.url}`);
+//   res.status(405).json({
+//     success: false,
+//     message: `Method ${req.method} not allowed for ${req.url}`,
+//     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+//   });
+// });
 
 const PORT =  process.env.PORT || 5001;
 app.listen(PORT, () => {
