@@ -27,6 +27,15 @@ app.use(cors({
 app.use(express.json());
 app.options('*', cors());
 
+// Add a root route handler
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Referral Backend API is running',
+    status: 'ok',
+    version: '1.0.0'
+  });
+});
+
 // Add logging middleware at the top after CORS
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`, {
