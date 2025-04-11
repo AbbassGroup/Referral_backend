@@ -14,9 +14,7 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
-    'https://abbass.group', // Primary domain
-    'https://portal-pgmg.onrender.com',
-    'https://portal-qz8y.onrender.com',
+    'https://abbass.group',
     'http://localhost:3001',
     'http://localhost:3000'
   ],
