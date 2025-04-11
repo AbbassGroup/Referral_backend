@@ -25,6 +25,17 @@ app.use(cors({
 app.use(express.json());
 app.options('*', cors());
 
+// Add a catch-all route for debugging
+app.all('*', (req, res, next) => {
+  console.log(`DEBUG - ${req.method} ${req.url}`, {
+    headers: req.headers,
+    body: req.body,
+    query: req.query,
+    params: req.params
+  });
+  next();
+});
+
 // Add a root route handler
 app.get('/', (req, res) => {
   res.json({ 
