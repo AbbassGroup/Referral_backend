@@ -56,18 +56,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add a proxy route for the frontend domain
-app.post('/api/login', (req, res, next) => {
-  console.log('API login route hit from:', req.headers.origin);
-  next();
-}, handleLogin);
-
-// Add a proxy route for the frontend domain
-app.post('/login', (req, res, next) => {
-  console.log('Login route hit from:', req.headers.origin);
-  next();
-}, handleLogin);
-
 // Define your login logic as a separate function
 const handleLogin = async (req, res) => {
   try {
@@ -117,6 +105,18 @@ const handleLogin = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+// Add a proxy route for the frontend domain
+app.post('/api/login', (req, res, next) => {
+  console.log('API login route hit from:', req.headers.origin);
+  next();
+}, handleLogin);
+
+// Add a proxy route for the frontend domain
+app.post('/login', (req, res, next) => {
+  console.log('Login route hit from:', req.headers.origin);
+  next();
+}, handleLogin);
 
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
