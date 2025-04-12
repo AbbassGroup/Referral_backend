@@ -16,6 +16,7 @@ app.use(cors({
   origin: [
     'https://abbass.group',
     'https://portal-qz8y.onrender.com',
+    'https://referral-portal-backend.onrender.com',
     'http://localhost:3001',
     'http://localhost:3000'
   ],
@@ -41,6 +42,15 @@ app.all('*', (req, res, next) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Referral Backend API is running',
+    status: 'ok',
+    version: '1.0.0'
+  });
+});
+
+// Add API status endpoint
+app.get('/api/', (req, res) => {
+  res.json({ 
+    message: 'API is running',
     status: 'ok',
     version: '1.0.0'
   });
