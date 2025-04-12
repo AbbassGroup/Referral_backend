@@ -56,15 +56,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Add a direct login route
-app.post('/login', async (req, res) => {
-  console.log('Direct login route hit');
-  // Forward to the /api/login route
-  return app._router.handle(req, res, () => {
-    req.url = '/api/login';
-    app._router.handle(req, res);
-  });
-});
+// Add a proxy route for the frontend domain
+app.post('/api/login', (req, res, next) => {
+  console.log('API login route hit from:', req.headers.origin);
+  next();
+}, handleLogin);
+
+// Add a proxy route for the frontend domain
+app.post('/login', (req, res, next) => {
+  console.log('Login route hit from:', req.headers.origin);
+  next();
+}, handleLogin);
 
 // Define your login logic as a separate function
 const handleLogin = async (req, res) => {
@@ -115,12 +117,6 @@ const handleLogin = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-// Replace your app.post('/login') with this:
-app.post('/login', handleLogin);
-
-// Keep your existing app.post('/api/login') as-is
-app.post('/api/login', handleLogin);
 
 // JWT Authentication Middleware for partner validation (dummy check)
 const authenticateToken = (req, res, next) => {
