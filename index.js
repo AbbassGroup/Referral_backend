@@ -623,17 +623,17 @@ app.delete('/api/settled-referrals/:id', async (req, res) => {
 // });
 app.post('/api/reset-password', async (req, res) => {
   try {
-    const { username, newPassword } = req.body;
+    const { name, password } = req.body;
 
     // Find the partner by username
-    const partner = await Partner.findOne({ username }).select('+password');
+    const partner = await Partner.findOne({ name }).select('+password');
     if (!partner) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Hash the new password
     const salt = await bcryptjs.genSalt(10);
-    const hashedPassword = await bcryptjs.hash(newPassword, salt);
+    const hashedPassword = await bcryptjs.hash(password, salt);
 
     // Update the partner's password
     partner.password = hashedPassword;
