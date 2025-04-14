@@ -621,7 +621,30 @@ app.delete('/api/settled-referrals/:id', async (req, res) => {
 //     allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 //   });
 // });
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { username, newPassword } = req.body;
 
+    // Find the partner by username
+    const partner = await Partner.findOne({ username });
+    if (!partner) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Hash the new password
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(newPassword, salt);
+
+    // Update the partner's password
+    partner.password = hashedPassword;
+    await partner.save();
+
+    res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ message: 'Error resetting password' });
+  }
+});
 const PORT =  process.env.PORT || 5001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
