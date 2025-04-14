@@ -626,7 +626,7 @@ app.post('/api/reset-password', async (req, res) => {
     const { username, newPassword } = req.body;
 
     // Find the partner by username
-    const partner = await Partner.findOne({ username });
+    const partner = await Partner.findOne({ username }).select('+password');
     if (!partner) {
       return res.status(404).json({ message: 'User not found' });
     }
