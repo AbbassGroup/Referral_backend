@@ -287,14 +287,24 @@ app.post('/api/partners', async (req, res) => {
   try {
     console.log('Received partner data:', req.body); // Debug log
     
-    // Hash the password before creating the partner
-    const salt = await bcryptjs.genSalt(10);
-    const hashedPassword = await bcryptjs.hash(req.body.password, salt);
+    // Check if a partner with the same email or username already exists
+    const existingPartner = await Partner.findOne({
+      $or: [
+        { email: req.body.email },
+        { name: req.body.name }
+      ]
+    });
     
-    // Create partner with hashed password
+    if (existingPartner) {
+      return res.status(400).json({
+        message: 'A partner with this email or username already exists',
+        field: existingPartner.email === req.body.email ? 'email' : 'name'
+      });
+    }
+    
+    // Create partner with plain password (will be hashed by the pre-save middleware)
     const partnerData = {
-      ...req.body,
-      password: hashedPassword
+      ...req.body
     };
     
     const partner = new Partner(partnerData);
@@ -307,6 +317,18 @@ app.post('/api/partners', async (req, res) => {
     res.status(201).json(partnerResponse);
   } catch (error) {
     console.error('Detailed error adding partner:', error);
+    
+    // Handle specific MongoDB errors
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: Object.values(error.errors).map(err => ({
+          field: err.path,
+          message: err.message
+        }))
+      });
+    }
+    
     res.status(500).json({ 
       message: 'Error adding partner',
       error: error.message 
