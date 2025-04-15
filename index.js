@@ -318,7 +318,7 @@ app.post('/api/partners', async (req, res) => {
     });
     
     if (existingPartner) {
-      const field = existingPartner.name === req.body.name ? 'username' : 'email';
+      const field = existingPartner.name === req.body.name ? 'name' : 'email';
       return res.status(400).json({ 
         message: `Partner with this ${field} already exists`,
         details: `Please choose a different ${field}`
@@ -577,7 +577,7 @@ app.get('/api/partner/validate', authenticateToken, async (req, res) => {
       success: true,
       partnerId: partner._id,
       email: partner.email,
-      name: partner.username
+      name: partner.name
     });
   } catch (error) {
     console.error('Partner validation error:', error);
