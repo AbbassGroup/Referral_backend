@@ -289,7 +289,7 @@ app.post('/api/partners', async (req, res) => {
     const token = authHeader && authHeader.split(' ')[1];
     
     // If token is provided, validate it
-    if (token && token !== 'dummy-admin-token') {
+    if (!token || token !== 'dummy-admin-token') {
       return res.status(403).json({ message: 'Invalid token. Only admin can create partners.' });
     }
     
@@ -325,7 +325,19 @@ app.post('/api/partners', async (req, res) => {
       });
     }
     
-    const partner = new Partner(req.body);
+    // Create partner data object
+    const partnerData = {
+      firstname: req.body.firstname.trim(),
+      lastname: req.body.lastname.trim(),
+      company: req.body.company.trim(),
+      email: req.body.email.trim().toLowerCase(),
+      number: req.body.number.trim(),
+      name: req.body.name.trim().toLowerCase(),
+      password: req.body.password
+    };
+    
+    // Create and save the partner
+    const partner = new Partner(partnerData);
     await partner.save();
     
     // Return partner without password
