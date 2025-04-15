@@ -284,12 +284,32 @@ app.get('/api/partners', async (req, res) => {
 });
 app.post('/api/partners', async (req, res) => {
   try {
-    const partner = new Partner(req.body);
+    console.log('Received partner data:', req.body); // Debug log
+    
+    // Hash the password before creating the partner
+    const salt = await bcryptjs.genSalt(10);
+    const hashedPassword = await bcryptjs.hash(req.body.password, salt);
+    
+    // Create partner with hashed password
+    const partnerData = {
+      ...req.body,
+      password: hashedPassword
+    };
+    
+    const partner = new Partner(partnerData);
     await partner.save();
-    res.status(201).json(partner);
+    
+    // Don't send the password back in the response
+    const partnerResponse = partner.toObject();
+    delete partnerResponse.password;
+    
+    res.status(201).json(partnerResponse);
   } catch (error) {
-    console.error('Error adding partner:', error);
-    res.status(500).json({ message: 'Error adding partner' });
+    console.error('Detailed error adding partner:', error);
+    res.status(500).json({ 
+      message: 'Error adding partner',
+      error: error.message 
+    });
   }
 });
 app.delete('/api/partners/:id', async (req, res) => {
