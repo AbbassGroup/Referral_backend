@@ -105,7 +105,7 @@ const handleLogin = async (req, res) => {
         _id: partner._id,
         firstname: partner.firstname,
         lastname: partner.lastname,
-        username: partner.username,
+        name: partner.name,
         email: partner.email,
         company: partner.company
       }
