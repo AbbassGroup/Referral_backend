@@ -284,22 +284,107 @@ app.get('/api/partners', async (req, res) => {
 });
 app.post('/api/partners', async (req, res) => {
   try {
+    // Check for authentication token
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    // If token is provided, validate it
+    if (token && token !== 'dummy-admin-token') {
+      return res.status(403).json({ message: 'Invalid token. Only admin can create partners.' });
+    }
+    
+    console.log('Creating new partner with data:', {
+      ...req.body,
+      password: '***' // Hide password in logs
+    });
+    
+    // Validate required fields
+    const requiredFields = ['firstname', 'lastname', 'company', 'email', 'number', 'name', 'password'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
+      return res.status(400).json({ 
+        message: 'Missing required fields', 
+        details: `The following fields are required: ${missingFields.join(', ')}` 
+      });
+    }
+    
+    // Check if partner with same name or email already exists
+    const existingPartner = await Partner.findOne({ 
+      $or: [
+        { name: req.body.name },
+        { email: req.body.email }
+      ]
+    });
+    
+    if (existingPartner) {
+      const field = existingPartner.name === req.body.name ? 'username' : 'email';
+      return res.status(400).json({ 
+        message: `Partner with this ${field} already exists`,
+        details: `Please choose a different ${field}`
+      });
+    }
+    
     const partner = new Partner(req.body);
     await partner.save();
-    res.status(201).json(partner);
+    
+    // Return partner without password
+    const partnerResponse = partner.toObject();
+    delete partnerResponse.password;
+    
+    res.status(201).json(partnerResponse);
   } catch (error) {
     console.error('Error adding partner:', error);
-    res.status(500).json({ message: 'Error adding partner' });
+    
+    // Provide more detailed error information
+    if (error.code === 11000) {
+      // Duplicate key error
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `Error adding partner: Duplicate ${field} value`,
+        details: error.message
+      });
+    } else if (error.name === 'ValidationError') {
+      // Validation error
+      return res.status(400).json({ 
+        message: 'Error adding partner: Validation failed',
+        details: error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Error adding partner',
+      details: error.message
+    });
   }
 });
 app.delete('/api/partners/:id', async (req, res) => {
   try {
+    // Check for authentication token
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    // If token is provided, validate it
+    if (token && token !== 'dummy-admin-token') {
+      return res.status(403).json({ message: 'Invalid token. Only admin can delete partners.' });
+    }
+    
     const { id } = req.params;
+    
+    // Check if partner exists
+    const partner = await Partner.findById(id);
+    if (!partner) {
+      return res.status(404).json({ message: 'Partner not found' });
+    }
+    
     await Partner.findByIdAndDelete(id);
     res.json({ message: 'Partner deleted successfully' });
   } catch (error) {
     console.error('Error deleting partner:', error);
-    res.status(500).json({ message: 'Error deleting partner' });
+    res.status(500).json({ 
+      message: 'Error deleting partner',
+      details: error.message
+    });
   }
 });
 
