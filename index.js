@@ -17,6 +17,7 @@ app.use(cors({
     'https://abbass.group',
     'https://portal-qz8y.onrender.com',
     'https://referral-portal-backend.onrender.com',
+    'https://referral-backend-c7os.onrender.com',
     'http://localhost:3001',
     'http://localhost:3000'
   ],
