@@ -864,7 +864,6 @@ const handleLogin = async (req, res) => {
         firstname: partner.firstname,
         lastname: partner.lastname,
         name: partner.username, // Use username as name for compatibility
-        username: partner.username,
         email: partner.email,
         company: partner.company
       }
@@ -1328,8 +1327,7 @@ app.get('/api/partner/validate', authenticateToken, async (req, res) => {
       success: true,
       partnerId: partner._id,
       email: partner.email,
-      name: partner.username,
-      username: partner.username
+      name: partner.username
     });
   } catch (error) {
     console.error('Partner validation error:', error);
