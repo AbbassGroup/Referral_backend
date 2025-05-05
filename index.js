@@ -1063,79 +1063,50 @@ app.get('/api/partners', async (req, res) => {
 });
 app.post('/api/partners', async (req, res) => {
   try {
-    console.log('Received partner data:', req.body);
+    console.log('Received partner data:', {
+      ...req.body,
+      password: '[REDACTED]' // Don't log passwords
+    });
     
     // Check if a partner with the same email or username already exists
     const existingPartner = await Partner.findOne({
       $or: [
         { email: req.body.email },
-        { name: req.body.name }
+        { username: req.body.username }  // Changed from 'name' to 'username'
       ]
     });
     
     if (existingPartner) {
       console.log('Found existing partner:', {
         id: existingPartner._id,
-        name: existingPartner.name,
+        username: existingPartner.username,  // Changed from 'name' to 'username'
         email: existingPartner.email
       });
       return res.status(400).json({
         message: 'A partner with this email or username already exists',
-        field: existingPartner.email === req.body.email ? 'email' : 'name',
-        details: {
-          existingName: existingPartner.name,
-          existingEmail: existingPartner.email
-        }
+        field: existingPartner.email === req.body.email ? 'email' : 'username' // Changed from 'name' to 'username'
       });
     }
     
-    // Create partner with sanitized data
-    const partnerData = {
-      firstname: req.body.firstname?.trim(),
-      lastname: req.body.lastname?.trim(),
-      company: req.body.company?.trim(),
-      email: req.body.email?.trim().toLowerCase(),
-      number: req.body.number?.trim(),
-      name: req.body.name?.trim().toLowerCase(),
-      password: req.body.password
-    };
+    // Create new partner instance
+    const partner = new Partner(req.body);
     
-    console.log('Creating new partner with data:', {
-      ...partnerData,
-      password: '[REDACTED]'
-    });
-    
-    // Use create method instead of new + save for better error handling
-    const partner = await Partner.create(partnerData);
+    // Save the partner
+    await partner.save();
     
     console.log('Partner created successfully with ID:', partner._id);
     
-    // Don't send the password back in the response
-    const partnerResponse = {
-      _id: partner._id,
-      firstname: partner.firstname,
-      lastname: partner.lastname,
-      company: partner.company,
-      email: partner.email,
-      number: partner.number,
-      name: partner.name
-    };
-    
-    res.status(201).json(partnerResponse);
+    // Return the saved partner (password is automatically excluded by the schema)
+    res.status(201).json(partner);
   } catch (error) {
-    console.error('Detailed error adding partner:', error);
+    console.error('Error adding partner:', error);
     
     // Handle MongoDB duplicate key error (code 11000)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
-      console.log('Duplicate key error:', {
-        field,
-        value: error.keyValue[field]
-      });
       return res.status(400).json({
         message: `A partner with this ${field} already exists`,
-        field: field,
-        value: error.keyValue[field]
+        field: field
       });
     }
     
@@ -1153,13 +1124,10 @@ app.post('/api/partners', async (req, res) => {
     }
     
     // For any other errors
-    res.status(500).json({ 
-      message: 'Error adding partner',
-      error: error.message,
-      stack: error.stack
-    });
+    res.status(500).json({ message: 'Error adding partner' });
   }
 });
+
 app.delete('/api/partners/:id', async (req, res) => {
   try {
     const { id } = req.params;
