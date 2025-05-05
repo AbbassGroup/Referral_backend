@@ -50,5 +50,15 @@ partnerSchema.pre('save', async function(next) {
   }
 });
 
-const Partner = mongoose.model('partners', partnerSchema);
+// Avoid duplicate model definition
+let Partner;
+try {
+  // Check if model is already defined
+  Partner = mongoose.model('partners');
+} catch (e) {
+  // Define model if not already defined
+  Partner = mongoose.model('partners', partnerSchema);
+}
+
+// const Partner = mongoose.model('partners', partnerSchema);
 module.exports = Partner;
