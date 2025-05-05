@@ -285,8 +285,8 @@
 // });
 // app.post('/api/partners', async (req, res) => {
 //   try {
-//     console.log('Received partner data:', req.body); // Debug log
-    
+//     console.log('Received partner data:', req.body);
+//     
 //     // Check if a partner with the same email or username already exists
 //     const existingPartner = await Partner.findOne({
 //       $or: [
@@ -294,44 +294,91 @@
 //         { name: req.body.name }
 //       ]
 //     });
-    
+//     
 //     if (existingPartner) {
+//       console.log('Found existing partner:', {
+//         id: existingPartner._id,
+//         name: existingPartner.name,
+//         email: existingPartner.email
+//       });
 //       return res.status(400).json({
 //         message: 'A partner with this email or username already exists',
-//         field: existingPartner.email === req.body.email ? 'email' : 'name'
+//         field: existingPartner.email === req.body.email ? 'email' : 'name',
+//         details: {
+//           existingName: existingPartner.name,
+//           existingEmail: existingPartner.email
+//         }
 //       });
 //     }
-    
-//     // Create partner with plain password (will be hashed by the pre-save middleware)
+//     
+//     // Create partner with sanitized data
 //     const partnerData = {
-//       ...req.body
+//       firstname: req.body.firstname?.trim(),
+//       lastname: req.body.lastname?.trim(),
+//       company: req.body.company?.trim(),
+//       email: req.body.email?.trim().toLowerCase(),
+//       number: req.body.number?.trim(),
+//       name: req.body.name?.trim().toLowerCase(),
+//       password: req.body.password
 //     };
-    
-//     const partner = new Partner(partnerData);
-//     await partner.save();
-    
+//     
+//     console.log('Creating new partner with data:', {
+//       ...partnerData,
+//       password: '[REDACTED]'
+//     });
+//     
+//     // Use create method instead of new + save for better error handling
+//     const partner = await Partner.create(partnerData);
+//     
+//     console.log('Partner created successfully with ID:', partner._id);
+//     
 //     // Don't send the password back in the response
-//     const partnerResponse = partner.toObject();
-//     delete partnerResponse.password;
-    
+//     const partnerResponse = {
+//       _id: partner._id,
+//       firstname: partner.firstname,
+//       lastname: partner.lastname,
+//       company: partner.company,
+//       email: partner.email,
+//       number: partner.number,
+//       name: partner.name
+//     };
+//     
 //     res.status(201).json(partnerResponse);
 //   } catch (error) {
 //     console.error('Detailed error adding partner:', error);
-    
-//     // Handle specific MongoDB errors
-//     if (error.name === 'ValidationError') {
+//     
+//     // Handle MongoDB duplicate key error (code 11000)
+//     if (error.code === 11000) {
+//       const field = Object.keys(error.keyPattern)[0];
+//       console.log('Duplicate key error:', {
+//         field,
+//         value: error.keyValue[field]
+//       });
 //       return res.status(400).json({
-//         message: 'Validation error',
-//         errors: Object.values(error.errors).map(err => ({
-//           field: err.path,
-//           message: err.message
-//         }))
+//         message: `A partner with this ${field} already exists`,
+//         field: field,
+//         value: error.keyValue[field]
 //       });
 //     }
-    
+//     
+//     // Handle validation errors
+//     if (error.name === 'ValidationError') {
+//       const validationErrors = Object.values(error.errors).map(err => ({
+//         field: err.path,
+//         message: err.message
+//       }));
+//       
+//       return res.status(400).json({
+//         message: 'Validation error',
+//         errors: validationErrors
+//       });
+//     }
+//     
+//     // For any other errors
 //     res.status(500).json({ 
 //       message: 'Error adding partner',
-//       error: error.message 
+//       error: error.message,
+//       stack: error.stack
 //     });
 //   }
 // });
@@ -1027,10 +1074,18 @@ app.post('/api/partners', async (req, res) => {
     });
     
     if (existingPartner) {
-      console.log('Partner already exists with email or username');
+      console.log('Found existing partner:', {
+        id: existingPartner._id,
+        name: existingPartner.name,
+        email: existingPartner.email
+      });
       return res.status(400).json({
         message: 'A partner with this email or username already exists',
-        field: existingPartner.email === req.body.email ? 'email' : 'name'
+        field: existingPartner.email === req.body.email ? 'email' : 'name',
+        details: {
+          existingName: existingPartner.name,
+          existingEmail: existingPartner.email
+        }
       });
     }
     
@@ -1073,9 +1128,14 @@ app.post('/api/partners', async (req, res) => {
     // Handle MongoDB duplicate key error (code 11000)
     if (error.code === 11000) {
       const field = Object.keys(error.keyPattern)[0];
+      console.log('Duplicate key error:', {
+        field,
+        value: error.keyValue[field]
+      });
       return res.status(400).json({
         message: `A partner with this ${field} already exists`,
-        field: field
+        field: field,
+        value: error.keyValue[field]
       });
     }
     
@@ -1095,7 +1155,8 @@ app.post('/api/partners', async (req, res) => {
     // For any other errors
     res.status(500).json({ 
       message: 'Error adding partner',
-      error: error.message 
+      error: error.message,
+      stack: error.stack
     });
   }
 });

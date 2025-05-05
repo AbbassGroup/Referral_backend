@@ -5,38 +5,51 @@ const bcryptjs = require('bcryptjs');
 const partnerSchema = new mongoose.Schema({
   firstname: {
     type: String,
-    required: true
+    required: [true, 'First name is required'],
+    trim: true
   },
   lastname: {
     type: String,
-    required: true
+    required: [true, 'Last name is required'],
+    trim: true
   },
   company: {
     type: String,
-    required: true
+    required: [true, 'Company is required'],
+    trim: true
   },
   email: {
     type: String,
-    required: true,
-    unique: true
+    required: [true, 'Email is required'],
+    unique: [true, 'Email already exists'],
+    trim: true,
+    lowercase: true
   },
   number: {
     type: String,
-    required: true
+    required: [true, 'Phone number is required'],
+    trim: true
   },
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: [true, 'Username is required'],
+    unique: [true, 'Username already exists'],
+    trim: true,
+    lowercase: true
   },
   password: {
     type: String,
-    required: true,
+    required: [true, 'Password is required'],
     select: false // Ensures password isn't returned in queries
   }
 }, {
-  collection: 'partners'
+  collection: 'partners',
+  timestamps: true
 });
+
+// Add index for unique fields
+partnerSchema.index({ email: 1 }, { unique: true });
+partnerSchema.index({ name: 1 }, { unique: true });
 
 partnerSchema.pre('save', async function(next) {
   try {
