@@ -813,7 +813,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Define your login logic as a separate function
 const handleLogin = async (req, res) => {
   try {
     const { name, password } = req.body;
@@ -835,18 +834,23 @@ const handleLogin = async (req, res) => {
       }
     }
 
-    // 2. Check Partner using username field
-    console.log('Checking for partner with username:', name);
-    const partner = await Partner.findOne({ username: name }).select('+password');
+    // 2. Check Partner using username field first, then fall back to name field
+    let partner = await Partner.findOne({ username: name }).select('+password');
+    
+    // If not found by username, try using the name field
+    if (!partner) {
+      partner = await Partner.findOne({ name: name }).select('+password');
+    }
     
     if (!partner) {
-      console.log('Partner not found with username:', name);
+      console.log('Partner not found with username or name:', name);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
     
     console.log('Partner found:', {
       id: partner._id,
-      username: partner.username
+      username: partner.username,
+      name: partner.name
     });
     
     const isMatch = await bcryptjs.compare(password, partner.password);
@@ -855,6 +859,7 @@ const handleLogin = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
     
+    // Return both username and name for compatibility
     return res.json({
       success: true,
       role: 'partner',
@@ -863,7 +868,8 @@ const handleLogin = async (req, res) => {
         _id: partner._id,
         firstname: partner.firstname,
         lastname: partner.lastname,
-        name: partner.username, // Use username as name for compatibility
+        username: partner.username,
+        name: partner.username, // Use username for name to ensure consistency
         email: partner.email,
         company: partner.company
       }
@@ -873,6 +879,66 @@ const handleLogin = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+// Define your login logic as a separate function
+// const handleLogin = async (req, res) => {
+//   try {
+//     const { name, password } = req.body;
+//     console.log('Login attempt for:', name);
+
+//     // 1. Check Admin first (only one admin exists)
+//     const admin = await Admin.findOne({ 'name ': name });
+//     if (admin) {
+//       // Compare plaintext password (admin password stored as plaintext)
+//       if (admin.password === password) {
+//         return res.json({
+//           success: true,
+//           role: 'admin',
+//           token: 'dummy-admin-token',
+//           user: { name: admin['name '].trim() }
+//         });
+//       } else {
+//         return res.status(401).json({ success: false, message: 'Invalid credentials' });
+//       }
+//     }
+
+//     // 2. Check Partner using username field
+//     console.log('Checking for partner with username:', name);
+//     const partner = await Partner.findOne({ username: name }).select('+password');
+    
+//     if (!partner) {
+//       console.log('Partner not found with username:', name);
+//       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+    
+//     console.log('Partner found:', {
+//       id: partner._id,
+//       username: partner.username
+//     });
+    
+//     const isMatch = await bcryptjs.compare(password, partner.password);
+//     if (!isMatch) {
+//       console.log('Password does not match for partner');
+//       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+//     }
+    
+//     return res.json({
+//       success: true,
+//       role: 'partner',
+//       token: 'dummy-partner-token',
+//       user: {
+//         _id: partner._id,
+//         firstname: partner.firstname,
+//         lastname: partner.lastname,
+//         name: partner.username, // Use username as name for compatibility
+//         email: partner.email,
+//         company: partner.company
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Login error:', error);
+//     res.status(500).json({ success: false, message: 'Server error' });
+//   }
+// };
 
 // Add a proxy route for the frontend domain
 app.post('/api/login', (req, res, next) => {
@@ -1072,6 +1138,73 @@ app.get('/api/partners', async (req, res) => {
     res.status(500).json({ message: 'Error fetching partners' });
   }
 });
+// app.post('/api/partners', async (req, res) => {
+//   try {
+//     console.log('Received partner data:', {
+//       ...req.body,
+//       password: '[REDACTED]' // Don't log passwords
+//     });
+    
+//     // Check if a partner with the same email or username already exists
+//     const existingPartner = await Partner.findOne({
+//       $or: [
+//         { email: req.body.email },
+//         { username: req.body.username }  // Changed from 'name' to 'username'
+//       ]
+//     });
+    
+//     if (existingPartner) {
+//       console.log('Found existing partner:', {
+//         id: existingPartner._id,
+//         username: existingPartner.username,  // Changed from 'name' to 'username'
+//         email: existingPartner.email
+//       });
+//       return res.status(400).json({
+//         message: 'A partner with this email or username already exists',
+//         field: existingPartner.email === req.body.email ? 'email' : 'username' // Changed from 'name' to 'username'
+//       });
+//     }
+    
+//     // Create new partner instance
+//     const partner = new Partner(req.body);
+    
+//     // Save the partner
+//     await partner.save();
+    
+//     console.log('Partner created successfully with ID:', partner._id);
+    
+//     // Return the saved partner (password is automatically excluded by the schema)
+//     res.status(201).json(partner);
+//   } catch (error) {
+//     console.error('Error adding partner:', error);
+    
+//     // Handle MongoDB duplicate key error (code 11000)
+//     if (error.code === 11000) {
+//       const field = Object.keys(error.keyPattern)[0];
+//       return res.status(400).json({
+//         message: `A partner with this ${field} already exists`,
+//         field: field
+//       });
+//     }
+    
+//     // Handle validation errors
+//     if (error.name === 'ValidationError') {
+//       const validationErrors = Object.values(error.errors).map(err => ({
+//         field: err.path,
+//         message: err.message
+//       }));
+      
+//       return res.status(400).json({
+//         message: 'Validation error',
+//         errors: validationErrors
+//       });
+//     }
+    
+//     // For any other errors
+//     res.status(500).json({ message: 'Error adding partner' });
+//   }
+// });
+
 app.post('/api/partners', async (req, res) => {
   try {
     console.log('Received partner data:', {
@@ -1083,26 +1216,41 @@ app.post('/api/partners', async (req, res) => {
     const existingPartner = await Partner.findOne({
       $or: [
         { email: req.body.email },
-        { username: req.body.username }  // Changed from 'name' to 'username'
+        { username: req.body.username }
       ]
     });
     
     if (existingPartner) {
       console.log('Found existing partner:', {
         id: existingPartner._id,
-        username: existingPartner.username,  // Changed from 'name' to 'username'
+        username: existingPartner.username,
         email: existingPartner.email
       });
       return res.status(400).json({
         message: 'A partner with this email or username already exists',
-        field: existingPartner.email === req.body.email ? 'email' : 'username' // Changed from 'name' to 'username'
+        field: existingPartner.email === req.body.email ? 'email' : 'username'
       });
     }
     
-    // Create new partner instance
-    const partner = new Partner(req.body);
+    // Create partner data - set name equal to username for consistency
+    const partnerData = {
+      firstname: req.body.firstname?.trim(),
+      lastname: req.body.lastname?.trim(),
+      company: req.body.company?.trim(),
+      email: req.body.email?.trim().toLowerCase(),
+      number: req.body.number?.trim(),
+      username: req.body.username?.trim().toLowerCase(),
+      name: req.body.username?.trim().toLowerCase(), // Set name equal to username
+      password: req.body.password
+    };
     
-    // Save the partner
+    console.log('Creating new partner with data:', {
+      ...partnerData,
+      password: '[REDACTED]'
+    });
+    
+    // Create the partner
+    const partner = new Partner(partnerData);
     await partner.save();
     
     console.log('Partner created successfully with ID:', partner._id);
@@ -1110,11 +1258,11 @@ app.post('/api/partners', async (req, res) => {
     // Return the saved partner (password is automatically excluded by the schema)
     res.status(201).json(partner);
   } catch (error) {
-    console.error('Error adding partner:', error);
+    console.error('Detailed error adding partner:', error);
     
     // Handle MongoDB duplicate key error (code 11000)
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
+      const field = Object.keys(error.keyPattern || {})[0] || 'field';
       return res.status(400).json({
         message: `A partner with this ${field} already exists`,
         field: field
@@ -1123,9 +1271,9 @@ app.post('/api/partners', async (req, res) => {
     
     // Handle validation errors
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message
+      const validationErrors = Object.values(error.errors || {}).map(err => ({
+        field: err.path || 'unknown',
+        message: err.message || 'Invalid value'
       }));
       
       return res.status(400).json({
@@ -1135,7 +1283,10 @@ app.post('/api/partners', async (req, res) => {
     }
     
     // For any other errors
-    res.status(500).json({ message: 'Error adding partner' });
+    res.status(500).json({ 
+      message: 'Error adding partner',
+      error: error.message
+    });
   }
 });
 
@@ -1303,6 +1454,41 @@ app.get('/api/partner/referrals', authenticateToken, async (req, res) => {
 });
 
 // New Partner Validation Endpoint
+// app.get('/api/partner/validate', authenticateToken, async (req, res) => {
+//   try {
+//     const partnerId = req.query.partnerId;
+//     console.log('Validating partner session:', partnerId);
+
+//     if (!partnerId) {
+//       return res.status(400).json({ 
+//         success: false,
+//         message: 'Partner ID is required' 
+//       });
+//     }
+
+//     const partner = await Partner.findById(partnerId);
+//     if (!partner) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: 'Partner not found' 
+//       });
+//     }
+
+//     res.json({ 
+//       success: true,
+//       partnerId: partner._id,
+//       email: partner.email,
+//       name: partner.username
+//     });
+//   } catch (error) {
+//     console.error('Partner validation error:', error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: 'Error validating partner session',
+//       error: error.message 
+//     });
+//   }
+// });
 app.get('/api/partner/validate', authenticateToken, async (req, res) => {
   try {
     const partnerId = req.query.partnerId;
@@ -1323,11 +1509,12 @@ app.get('/api/partner/validate', authenticateToken, async (req, res) => {
       });
     }
 
+    // Return consistent name field for compatibility
     res.json({ 
       success: true,
       partnerId: partner._id,
       email: partner.email,
-      name: partner.username
+      name: partner.username || partner.name // Prioritize username if available
     });
   } catch (error) {
     console.error('Partner validation error:', error);
@@ -1459,12 +1646,42 @@ app.delete('/api/settled-referrals/:id', async (req, res) => {
   }
 });
 
+// app.post('/api/reset-password', async (req, res) => {
+//   try {
+//     const { name, password } = req.body;
+
+//     // Find the partner by username
+//     const partner = await Partner.findOne({ name: name }).select('+password');
+//     if (!partner) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     // Hash the new password
+//     const salt = await bcryptjs.genSalt(10);
+//     const hashedPassword = await bcryptjs.hash(password, salt);
+
+//     // Update the partner's password
+//     partner.password = hashedPassword;
+//     await partner.save();
+
+//     res.json({ success: true, message: 'Password reset successful' });
+//   } catch (error) {
+//     console.error('Error resetting password:', error);
+//     res.status(500).json({ message: 'Error resetting password' });
+//   }
+// });
 app.post('/api/reset-password', async (req, res) => {
   try {
     const { name, password } = req.body;
 
-    // Find the partner by username
-    const partner = await Partner.findOne({ name: name }).select('+password');
+    // Find the partner by username or name
+    let partner = await Partner.findOne({ username: name }).select('+password');
+    
+    // If not found by username, try name
+    if (!partner) {
+      partner = await Partner.findOne({ name: name }).select('+password');
+    }
+    
     if (!partner) {
       return res.status(404).json({ message: 'User not found' });
     }

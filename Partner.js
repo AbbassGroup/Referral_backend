@@ -115,6 +115,10 @@ const partnerSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  name: {     // Keeping this field for backward compatibility with existing data
+    type: String,
+    sparse: true  // Allows null values and only enforces uniqueness for non-null values
+  },
   password: {
     type: String,
     required: true,
@@ -130,11 +134,20 @@ partnerSchema.pre('save', async function(next) {
       const salt = await bcryptjs.genSalt(10);
       this.password = await bcryptjs.hash(this.password, salt);
     }
+    
+    // Ensure name is always set to the same value as username for consistency
+    if (this.isModified('username')) {
+      this.name = this.username;
+    }
+    
     next();
   } catch (error) {
     next(error);
   }
+  
 });
+
+
 
 const Partner = mongoose.model('partners', partnerSchema);
 module.exports = Partner;
