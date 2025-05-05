@@ -835,15 +835,26 @@ const handleLogin = async (req, res) => {
       }
     }
 
-    // 2. Check Partner (password is hashed)
-    const partner = await Partner.findOne({ name: name }).select('+password');
+    // 2. Check Partner using username field
+    console.log('Checking for partner with username:', name);
+    const partner = await Partner.findOne({ username: name }).select('+password');
+    
     if (!partner) {
+      console.log('Partner not found with username:', name);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
+    
+    console.log('Partner found:', {
+      id: partner._id,
+      username: partner.username
+    });
+    
     const isMatch = await bcryptjs.compare(password, partner.password);
     if (!isMatch) {
+      console.log('Password does not match for partner');
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
+    
     return res.json({
       success: true,
       role: 'partner',
@@ -852,7 +863,8 @@ const handleLogin = async (req, res) => {
         _id: partner._id,
         firstname: partner.firstname,
         lastname: partner.lastname,
-        name: partner.name,
+        name: partner.username, // Use username as name for compatibility
+        username: partner.username,
         email: partner.email,
         company: partner.company
       }
@@ -1316,7 +1328,8 @@ app.get('/api/partner/validate', authenticateToken, async (req, res) => {
       success: true,
       partnerId: partner._id,
       email: partner.email,
-      name: partner.name
+      name: partner.username,
+      username: partner.username
     });
   } catch (error) {
     console.error('Partner validation error:', error);
