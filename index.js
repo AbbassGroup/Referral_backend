@@ -1328,6 +1328,54 @@ app.get('/api/referrals', async (req, res) => {
   }
 });
 
+// app.post('/api/referrals', authenticateToken, async (req, res) => {
+//   try {
+//     console.log('Referral POST body:', req.body);
+//     if (!req.body.assignedPartner) {
+//       return res.status(400).json({ message: 'assignedPartner is required' });
+//     }
+    
+//     // Verify that the authenticated user matches the assignedPartner
+//     if (req.user._id !== req.body.assignedPartner) {
+//       return res.status(403).json({ message: 'Not authorized to create referrals for other partners' });
+//     }
+    
+//     const partner = await Partner.findById(req.body.assignedPartner);
+//     if (!partner) {
+//       return res.status(400).json({ message: 'Invalid partner ID' });
+//     }
+    
+//     // Log the data being used to create the referral
+//     const referralData = {
+//       ...req.body,
+//       status: 'New lead'.trim() // Ensure no whitespace
+//     };
+//     console.log('Creating referral with data:', referralData);
+    
+//     const referral = new Referral(referralData);
+//     await referral.save();
+    
+//     // Debug: Verify the saved status
+//     const savedReferral = await Referral.findById(referral._id);
+//     console.log('Saved referral status:', savedReferral.status);
+//     console.log('Status type:', typeof savedReferral.status);
+//     console.log('Status length:', savedReferral.status.length);
+    
+//     // Populate the partner data before sending the response
+//     const populatedReferral = await Referral.findById(referral._id)
+//       .populate({
+//         path: 'assignedPartner',
+//         select: 'firstname lastname company email'
+//       });
+    
+//     console.log('Successfully saved referral:', populatedReferral);
+//     res.status(201).json(populatedReferral);
+//   } catch (error) {
+//     console.error('Error creating referral:', error);
+//     res.status(500).json({ message: error.message || 'Error creating referral' });
+//   }
+// });
+// Fix for the POST /api/referrals route in index.js
 app.post('/api/referrals', authenticateToken, async (req, res) => {
   try {
     console.log('Referral POST body:', req.body);
@@ -1340,39 +1388,66 @@ app.post('/api/referrals', authenticateToken, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to create referrals for other partners' });
     }
     
+    // Verify partner exists using either username or name field
     const partner = await Partner.findById(req.body.assignedPartner);
     if (!partner) {
       return res.status(400).json({ message: 'Invalid partner ID' });
     }
     
-    // Log the data being used to create the referral
+    // Log and sanitize the data being used to create the referral
     const referralData = {
-      ...req.body,
-      status: 'New lead'.trim() // Ensure no whitespace
+      firstName: req.body.firstName?.trim(),
+      surname: req.body.surname?.trim(),
+      contactNumber: req.body.contactNumber?.trim(),
+      email: req.body.email?.trim().toLowerCase(),
+      preferredContactTime: req.body.preferredContactTime?.trim() || '',
+      businessUnit: req.body.businessUnit || 'Advocacy',
+      status: 'New lead',
+      assignedPartner: req.body.assignedPartner,
+      commission: req.body.commission || 0,
+      date: new Date()
     };
-    console.log('Creating referral with data:', referralData);
     
+    console.log('Creating referral with sanitized data:', referralData);
+    
+    // Create the referral with proper error handling
     const referral = new Referral(referralData);
     await referral.save();
     
     // Debug: Verify the saved status
     const savedReferral = await Referral.findById(referral._id);
     console.log('Saved referral status:', savedReferral.status);
-    console.log('Status type:', typeof savedReferral.status);
-    console.log('Status length:', savedReferral.status.length);
     
     // Populate the partner data before sending the response
     const populatedReferral = await Referral.findById(referral._id)
       .populate({
         path: 'assignedPartner',
-        select: 'firstname lastname company email'
+        select: 'firstname lastname company email username'
       });
     
     console.log('Successfully saved referral:', populatedReferral);
     res.status(201).json(populatedReferral);
   } catch (error) {
     console.error('Error creating referral:', error);
-    res.status(500).json({ message: error.message || 'Error creating referral' });
+    
+    // More detailed error handling
+    if (error.name === 'ValidationError') {
+      // Handle mongoose validation errors
+      const validationErrors = Object.values(error.errors || {}).map(err => ({
+        field: err.path || 'unknown',
+        message: err.message || 'Invalid value'
+      }));
+      
+      return res.status(400).json({
+        message: 'Validation error',
+        errors: validationErrors
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Error creating referral. Please try again.',
+      error: error.message || 'Unknown error'
+    });
   }
 });
 
